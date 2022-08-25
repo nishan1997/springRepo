@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:aggregators="http://www.mulesoft.org/schema/mule/aggregators" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/aggregators http://www.mulesoft.org/schema/mule/aggregators/current/mule-aggregators.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="7f909851-f997-4179-8807-0519a22c3514" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="muletestFlow" doc:id="5fc2c02d-b441-4758-a196-8935efadc3f8" >
+		<http:listener doc:name="Listener" doc:id="29c7edf2-ce96-42f5-9d11-7518659b6567" config-ref="HTTP_Listener_config" path="/test"/>
+		<set-variable value="#[sizeOf(payload) as Number]" doc:name="Set Variable" doc:id="41a4dccf-a8e7-49fa-a4c3-608aaa858834" variableName="size"/>
+		<set-variable value="#[payload.name]" doc:name="Set Variable" doc:id="56d3664e-f228-4c14-a00e-348e5c601fe5" variableName="name"/>
+		<foreach doc:name="For Each" doc:id="4c573e8a-b49f-4452-a066-90a7d4040d1f">
+			<set-payload value='#[payload.name]' doc:name="Set Payload" doc:id="a083136a-344f-4bce-91ea-838c3fdf3d3e" />
+			<aggregators:group-based-aggregator doc:name="Group based aggregator" doc:id="5f4a883a-3178-4ea8-834d-165b993b355c" name="groupAggregator" groupSize="#[vars.size]">
+				<aggregators:incremental-aggregation >
+					<logger level="INFO" doc:name="Logger" doc:id="b01bb41a-f143-4221-87ca-4d1fb1a824af" message="#[payload]"/>
+				</aggregators:incremental-aggregation>
+				<aggregators:aggregation-complete >
+					<flow-ref doc:name="Flow Reference" doc:id="3e171c8b-53e4-4f80-9475-0b2cb221e3dd" name="muletestFlow1"/>
+				</aggregators:aggregation-complete>
+			</aggregators:group-based-aggregator>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="08323f58-4d90-4c3a-8c0e-ef6040478326" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var b=[{
+ 	"name":"suamn",
+	"city":"Bangalore",
+	"phone_no":"998012956",
+	"id":18
+ },
+ {
+ 	"name":"kamal",
+	"city":"Bangalore",
+	"phone_no":"998012956",
+	"id":10
+ }
+]
+
+var a=sizeOf(b)
+---
+vars.data]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="muletestFlow2" doc:id="144b2e50-8683-407b-8d3f-0122058476ac" >
+		<http:listener doc:name="Listener" doc:id="84b59c77-29e7-4c28-b4fb-ac23e9680768" config-ref="HTTP_Listener_config" path="/time">
+			<http:response >
+				<http:body ><![CDATA[#[%dw 2.0
+output application/json
+---
+vars.data]]]></http:body>
+			</http:response>
+		</http:listener>
+		<set-variable value="#[payload.name]" doc:name="Set Variable" doc:id="2d15b305-f1a2-4a11-b88f-2252e0fc3a03" variableName="data"/>
+		<foreach doc:name="For Each" doc:id="4abe5309-0f57-4575-a3b2-b31417711b71" collection="#[payload]">
+			<aggregators:time-based-aggregator doc:name="Time based aggregator" doc:id="30ff6ded-563c-46ad-ab08-f8c245b4ea4d" name="timeaggrrgator" period="1">
+				<aggregators:incremental-aggregation >
+					<set-variable value="#[payload.name]" doc:name="Set Variable" doc:id="2adf9b68-b16b-48ba-b406-b8a640e368c1" variableName="data"/>
+				</aggregators:incremental-aggregation>
+		</aggregators:time-based-aggregator>
+		</foreach>
+	</flow>
+	<flow name="muletestFlow1" doc:id="9786b5cd-820d-474c-b11e-8afbf0358cf0" >
+		<aggregators:aggregator-listener doc:name="Aggregator listener" doc:id="d3e155e3-912e-4092-8a87-a506510b4b2a" aggregatorName="timeaggrrgator"/>
+		<set-variable value="#[payload]" doc:name="Set Variable" doc:id="3d6d1830-3515-46b4-a784-9ef0af6c1519" variableName="data" />
+	</flow>
+	<flow name="muletestFlow3" doc:id="6c9e0215-06ca-47c7-b4da-477ad9d32f0e" >
+		<aggregators:aggregator-listener doc:name="Aggregator listener" doc:id="6b429c30-a432-472b-8bbd-086bdbb25772" aggregatorName="sizeAggregator"/>
+		<ee:transform doc:name="Transform Message" doc:id="f99150c0-2f3d-4be7-95f3-8f7a591f5902" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.data]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="aggregateFlow" doc:id="3773bda3-3c87-4dbc-98cd-a86912a2e8c8" >
+		<http:listener doc:name="Listener" doc:id="5b762ce7-f57e-41c1-82b8-952346eff1e1" config-ref="HTTP_Listener_config" path="size">
+			<http:response >
+				<http:body ><![CDATA[#[%dw 2.0
+output application/json
+---
+payload]]]></http:body>
+			</http:response>
+		</http:listener>
+		<foreach doc:name="For Each" doc:id="acee4d26-6791-4edc-bca6-f98d7635e0d0" collection="#[payload]">
+			<aggregators:size-based-aggregator doc:name="Size based aggregator" doc:id="55c1b488-0af6-4a8d-bb0c-d4321a995ee2" name="sizeAggregator" maxSize="3">
+			<aggregators:incremental-aggregation >
+					<set-variable value="#[payload.name]" doc:name="Set Variable" doc:id="4c4f94a1-f7b3-4093-a1a4-34e1799dbca8" variableName="data"/>
+				</aggregators:incremental-aggregation>
+				<aggregators:aggregation-complete>
+				<logger level="INFO" doc:name="Logger" doc:id="405efcf8-535a-4709-a198-1b104986dfec" message='#[vars.data]' />
+			</aggregators:aggregation-complete>
+		</aggregators:size-based-aggregator>
+		</foreach>
+	</flow>
+</mule>

@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_9786b5cd_820d_474c_b11e_8afbf0358cf0_Output_Variables_data = Array<Any>
+
